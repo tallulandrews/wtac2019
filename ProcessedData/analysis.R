@@ -61,12 +61,17 @@ Metadata[!Metadata$CellID %in% colnames(human_counts),]
 
 
 
-Metadata <- Metadata[Metadata$CellID %in% colnames(human_counts),]
 total_mouse <- colSums(mouse_counts)
 total_human <- colSums(human_counts)
 
-tidy_res <- data.frame(Metadata, total_mouse, total_human)
+tidy_res <- Metadata
+tidy_res$total_human <- total_human[match(tidy_res$CellID, names(total_human))]
+tidy_res$total_mouse <- total_mouse[match(tidy_res$CellID, names(total_mouse))]
 
 
+# Plotting
+colours <- c("red", "forestgreen", "blue")
 
+plot(tidy_res$total_human/tidy_res$N_Reads, tidy_res$total_mouse/tidy_res$N_Reads, col=colours[tidy_res$sample], pch=16, cex=2, xlab="%human", ylab="%mouse")
+legend("topright", levels(tidy_res$sample), fill=colours)
 
