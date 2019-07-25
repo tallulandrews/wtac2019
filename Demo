@@ -1,0 +1,40 @@
+show website: http://sfweb.internal.sanger.ac.uk:1959/checks/runs/30276
+show file: RefData/Lane_output_summary.csv
+
+samtools view -h ../FastQ/29783_1#24_mouse.bam | less
+
+samtools flagstat ../FastQ/29783_1#24_mouse.bam 
+
+bash 0_CRAM_to_FastQ.sh
+
+# Interactive session on farm - FASTQC
+bsub -R"select[mem>20000] rusage[mem=20000]" -M 20000 -Is bash 
+export _JAVA_OPTIONS="-Xmx20000M -XX:MaxHeapSize=20000m"
+FASTQC=/nfs/users/nfs_t/ta6/RNASeqPipeline/software/FastQC/fastqc
+zcat FastQ/*_1.fastq.gz | $FASTQC stdin
+mv stdin_fastqc.html FASTQC_output/30276_read1.html
+mv stdin_fastqc.zip FASTQC_output/30276_read1.zip
+
+zcat FastQ/*_2.fastq.gz | $FASTQC stdin
+mv stdin_fastqc.html FASTQC_output/30276_read2.html
+mv stdin_fastqc.zip FASTQC_output/30276_read2.zip
+
+# Trimming
+bash Trimming_Loop.sh
+show file: Trimmed/30276_1#42_1.fastq.gz_trimming_report.txt
+grep "Reads with adapters" Trimmed/*.txt > adaptor_summary.txt
+grep "Quality-trimmed" Trimmed/*.txt > adaptor_summary.txt
+
+
+# Kallisto
+show file: /lustre/scratch117/cellgen/team218/TA/genomebuilding/Homo_sapiens.GRCh38.79.gtf
+show file: /lustre/scratch117/cellgen/team218/TA/genomebuilding/Homo_sapiens.GRCh38.dna.primary_assembly.fa
+show file: /lustre/scratch117/cellgen/team218/TA/STRIPED_GENOMES/Kallisto_Human/Transcripts.fasta
+
+bash 2-5.1_DO_kallisto_quant.sh RefData/mouse.idx Trimmed/ KallistoMouse/
+bash 2-5.1_DO_kallisto_quant.sh RefData/human.idx Trimmed/ KallistoHuman/
+
+perl 6_Get_Kallisto_Gene.pl RefData/Homo_sapiens.GRCh38.79.gtf KallistoHuman/ human_gene
+perl 6_Get_Kallisto_Gene.pl RefData/Mus_musculus.GRCm38.79.gtf KallistoMouse/ mouse_gene
+perl 6_Get_Kallisto.pl KallistoHuman/ human
+perl 6_Get_Kallisto.pl KallistoMouse/ mouse
